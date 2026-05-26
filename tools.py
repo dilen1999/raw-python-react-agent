@@ -14,6 +14,7 @@ FILES_DIR.mkdir(exist_ok=True)
 # Safe calculator
 # -----------------------------
 
+# Define allowed operators for safe evaluation
 ALLOWED_OPERATORS = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
