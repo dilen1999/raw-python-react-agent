@@ -23,6 +23,7 @@ ALLOWED_OPERATORS = {
     ast.Pow: operator.pow,
     ast.Mod: operator.mod,
     ast.FloorDiv: operator.floordiv,
+    
 }
 
 ALLOWED_UNARY_OPERATORS = {
