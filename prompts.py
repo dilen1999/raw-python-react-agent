@@ -1,5 +1,22 @@
-SYSTEM_PROMPT = """
-You are a simple ReAct-style AI agent.
+"""
+prompts.py
+----------
+The system prompt and the strict JSON schema (structured outputs) the
+model must follow on every turn.
+
+The tool list inside SYSTEM_PROMPT and the "action" enum inside
+AGENT_RESPONSE_FORMAT are both generated straight from tools.TOOL_REGISTRY,
+so the prompt can never go stale as tools are added, removed, or renamed.
+"""
+
+from tools import describe_tools, TOOL_REGISTRY
+
+# Every action the model may pick: every registered tool, plus the two
+# special control-flow actions the agent loop handles directly.
+_ACTION_ENUM = list(TOOL_REGISTRY.keys()) + ["human_handoff", "final_answer"]
+
+SYSTEM_PROMPT = f"""
+You are a simple ReAct-style AI agent (Reasoning + Acting).
 
 Your job:
 1. Understand the user's request.
@@ -10,30 +27,24 @@ Your job:
 6. Give a final answer when done.
 
 Available tools:
+{describe_tools()}
 
-1. calculator
-Use this for math calculations.
-Input field: expression
-
-2. web_search
-Use this when the user asks for latest/current information.
-Input field: query
-
-3. file_read
-Use this to read a file from the files folder.
-Input field: filename
-
-4. file_write
-Use this to write content into a file inside the files folder.
-Input fields: filename, content
+Special actions:
+- human_handoff
+  Use this ONLY when you are missing information only the user can supply
+  (an ambiguous request, a decision only they can make, or you are stuck
+  after a tool keeps failing). Input field: question
+- final_answer
+  Use this when the task is complete. Put the full answer for the user in
+  the top-level "final_answer" field.
 
 Rules:
 - Do not invent tool results.
 - Use tools only when needed.
-- Keep reasoning_summary short.
-- Do not reveal long hidden reasoning.
+- Keep reasoning_summary short (it is shown to the user, not hidden chain-of-thought).
+- If you are unsure and truly need clarification, use human_handoff instead of guessing.
 - If the task is complete, use action = final_answer.
-"""
+""".strip()
 
 AGENT_RESPONSE_FORMAT = {
     "type": "json_schema",
@@ -48,13 +59,7 @@ AGENT_RESPONSE_FORMAT = {
                 },
                 "action": {
                     "type": "string",
-                    "enum": [
-                        "calculator",
-                        "web_search",
-                        "file_read",
-                        "file_write",
-                        "final_answer"
-                    ]
+                    "enum": _ACTION_ENUM
                 },
                 "action_input": {
                     "type": "object",
@@ -62,13 +67,15 @@ AGENT_RESPONSE_FORMAT = {
                         "expression": {"type": ["string", "null"]},
                         "query": {"type": ["string", "null"]},
                         "filename": {"type": ["string", "null"]},
-                        "content": {"type": ["string", "null"]}
+                        "content": {"type": ["string", "null"]},
+                        "question": {"type": ["string", "null"]}
                     },
                     "required": [
                         "expression",
                         "query",
                         "filename",
-                        "content"
+                        "content",
+                        "question"
                     ],
                     "additionalProperties": False
                 },
